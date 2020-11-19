@@ -26,7 +26,8 @@ classdef Crazyswarm < handle
             
             for crazyflie = cfg.crazyflies
                 id = crazyflie{1}.id;
-                obj.crazyflies{end+1} = Crazyflie(id, tfTree);
+                initialPosition = cell2mat(crazyflie{1}.initialPosition);
+                obj.crazyflies{end+1} = Crazyflie(id, initialPosition, tfTree);
             end            
         end
         

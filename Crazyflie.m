@@ -6,6 +6,7 @@ classdef Crazyflie < handle
         id
         prefix
         tfTree
+        initialPosition
 
         % Publishers
         cmdPositionPublisher
@@ -22,11 +23,12 @@ classdef Crazyflie < handle
     end
     
     methods
-        function obj = Crazyflie(id, tfTtree)
+        function obj = Crazyflie(id, initialPosition, tfTtree)
             %CRAZYFLIE Constructor for a Crazyflie
             obj.id = id;
             prefix = "cf" + num2str(id);
             obj.prefix = prefix;
+            obj.initialPosition = initialPosition;
             obj.tfTree = tfTtree;
             
             obj.cmdPositionPublisher = rospublisher(prefix + "/cmd_position", ...
@@ -204,7 +206,7 @@ classdef Crazyflie < handle
             end
             
             request = rosmessage(obj.notifySetpointsStopService);
-            request.RemainvalidMillisecs = remainValidMillisecs;
+            request.RemainValidMillisecs = remainValidMillisecs;
             request.GroupMask            = groupMask;
             
             call(obj.notifySetpointsStopService, request);
