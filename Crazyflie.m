@@ -1,14 +1,12 @@
 classdef Crazyflie < handle
-    %CRAZYFLIE Summary of this class goes here
+    %CRAZYFLIE Class representing a single crazyflie.
     
-    properties (GetAccess='public', SetAccess='private')
+    properties(GetAccess='public', SetAccess='private')
         % Properties
         id
         prefix
         tfTree
-        position
-        velocity
-        
+
         % Publishers
         cmdPositionPublisher
         cmdVelocityWorldPublisher
@@ -24,12 +22,12 @@ classdef Crazyflie < handle
     end
     
     methods
-        function obj = Crazyflie(id, tTtree)
+        function obj = Crazyflie(id, tfTtree)
             %CRAZYFLIE Constructor for a Crazyflie
             obj.id = id;
             prefix = "cf" + num2str(id);
             obj.prefix = prefix;
-            obj.tfTree = tTtree;
+            obj.tfTree = tfTtree;
             
             obj.cmdPositionPublisher = rospublisher(prefix + "/cmd_position", ...
                                                     "crazyflie_driver/Position");
@@ -60,8 +58,8 @@ classdef Crazyflie < handle
             clear obj.notifySetpointsStopService
         end
         
-        function pos = get.position(obj)
-            %GET.POS Get method for position
+        function pos = position(obj)
+            %POSITION Get position of crazyflie.
             % Latest known transformation
             tf = getTransform(obj.tfTree, "/world", obj.prefix, "Timeout", 10);
             % t = tf.Header.Stamp.Sec + tf.Header.Stamp.Nsec / 1e9;
@@ -69,12 +67,11 @@ classdef Crazyflie < handle
             pos = [transl.X; transl.Y; transl.Z];
         end
 
-        function vel = get.velocity(obj)
-            %GET.VEL Get method for velocity
+        function vel = velocity(obj)
+            %VELOCITY Get velocity of crazyflie.
             % Alternative code if velocity is calculated in in python
             % vel_msg = obj.VelSubscriber.LatestMessage;
             % vel = [vel_msg.Vector.X; vel_msg.Vector.Y; vel_msg.Vector.Z];
-
             dt = 0.1;
             timePrev = rostime("now") - dt;
             tfNow = getTransform(obj.tfTree, "/world", obj.prefix, "Timeout", 10);
