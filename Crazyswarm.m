@@ -42,11 +42,11 @@ classdef Crazyswarm < handle
         function state = state(obj)
             %STATE Get state matrix of crazyswarm.
             n_cfs = length(obj.crazyflies);
-            state = zeros(n_cfs, 6);  % Prealocate state matrix
+            state = zeros(6, n_cfs);  % Prealocate state matrix
             for i = 1:n_cfs
                 cf = obj.crazyflies{i};
-                state(i, 1:3) = cf.position;
-                state(i, 4:6) = cf.velocity;
+                state(1:3, i) = cf.position;
+                state(4:6, i) = cf.velocity;
             end
         end
         
@@ -56,8 +56,9 @@ classdef Crazyswarm < handle
             %yaw setpoint for each crazyflie in the swarm.
             n_cfs = length(obj.crazyflies);
             for i = 1:n_cfs
-                pos = posVec(i, :);
+                pos = posVec(:, i);
                 yaw = yawVec(i);
+                
                 obj.crazyflies{i}.cmdPosition(pos, yaw);
             end
         end
@@ -67,8 +68,9 @@ classdef Crazyswarm < handle
             %setpoint command for all crazyflies in the swarm.
             n_cfs = length(obj.crazyflies);
             for i = 1:n_cfs
-                vel = velVec(i, :);
+                vel = velVec(:, i);
                 yawRate = yawRateVec(i);
+                
                 obj.crazyflies{i}.cmdPosition(vel, yawRate);
             end
         end
@@ -78,11 +80,12 @@ classdef Crazyswarm < handle
             %command for each crazyflie in the swarm.
             n_cfs = length(obj.crazyflies);
             for i = 1:n_cfs
-                pos = posVec(i, :);
-                vel = velVec(i, :);
-                acc = accVec(i, :);
+                pos = posVec(:, i);
+                vel = velVec(:, i);
+                acc = accVec(:, i);
                 yaw = yawVec(i);
-                omega = omegaVec(i, :);
+                omega = omegaVec(:, i);
+                
                 obj.crazyflies{i}.cmdPosition(pos, vel, acc, yaw, omega);
             end
         end
