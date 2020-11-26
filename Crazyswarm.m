@@ -71,7 +71,7 @@ classdef Crazyswarm < handle
                 vel = velVec(:, i);
                 yawRate = yawRateVec(i);
                 
-                obj.crazyflies{i}.cmdPosition(vel, yawRate);
+                obj.crazyflies{i}.cmdVelocityWorld(vel, yawRate);
             end
         end
         
@@ -86,7 +86,7 @@ classdef Crazyswarm < handle
                 yaw = yawVec(i);
                 omega = omegaVec(:, i);
                 
-                obj.crazyflies{i}.cmdPosition(pos, vel, acc, yaw, omega);
+                obj.crazyflies{i}.cmdFullState(pos, vel, acc, yaw, omega);
             end
         end
                
