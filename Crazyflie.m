@@ -1,12 +1,14 @@
 classdef Crazyflie < handle
     %CRAZYFLIE Class representing a single crazyflie.
     
-    properties(GetAccess='public', SetAccess='private')
-        % Properties
+    properties (GetAccess = public, SetAccess = private)
         id
         prefix
-        tfTree
         initialPosition
+    end
+    
+    properties (GetAccess = private, SetAccess = private)
+        tfTree
 
         % Publishers
         cmdPositionPublisher
@@ -20,6 +22,16 @@ classdef Crazyflie < handle
         goToService
         notifySetpointsStopService
         % TODO: Implement updateParamsService
+        
+        % Messages
+        cmdPositionMsg
+        cmdVelocityWorldMsg
+        cmdFullStateMsg
+    end
+    
+    properties(Constant, Hidden)
+        % Hack for faster access to ros time
+        time = ros.internal.Time;
     end
     
     methods
@@ -31,14 +43,21 @@ classdef Crazyflie < handle
             obj.initialPosition = initialPosition;
             obj.tfTree = tfTtree;
             
+            
             obj.cmdPositionPublisher = rospublisher(prefix + "/cmd_position", ...
                                                     "crazyflie_driver/Position");
-                                        
+            obj.cmdPositionMsg = rosmessage("crazyflie_driver/FullState")
+            obj.cmdPositionMsg.Header.FrameId     = "/world";
+                   
             obj.cmdVelocityWorldPublisher = rospublisher(prefix + "/cmd_velocity_world", ...
                                                          "crazyflie_driver/VelocityWorld");
-            
+            obj.cmdVelocityWorldMsg = rosmessage("crazyflie_driver/VelocityWorld")
+            obj.cmdVelocityWorldMsg.Header.FrameId     = "/world";
+
             obj.cmdFullStatePublisher = rospublisher(prefix + "/cmd_full_state", ...
                                                      "crazyflie_driver/FullState");
+            obj.cmdFullStateMsg = rosmessage("crazyflie_driver/FullState");
+            obj.cmdFullStateMsg.Header.FrameId     = "/world";
                                                
                                                
             obj.setGroupMaskService = rossvcclient(prefix + "/set_group_mask");
@@ -48,7 +67,7 @@ classdef Crazyflie < handle
             obj.notifySetpointsStopService = rossvcclient(prefix + "/notify_setpoints_stop");
         end
         
-       function delete(obj)
+        function delete(obj)
             %DELETE Delete the Crazyflie
             clear obj.cmdPositionPublisher
             clear obj.cmdVelocityWorldPublisher
@@ -58,6 +77,10 @@ classdef Crazyflie < handle
             clear obj.landService
             clear obj.goToService
             clear obj.notifySetpointsStopService
+            clear obj.cmdPositionMsg
+            clear obj.cmdVelocityWorldMsg
+            clear obj.cmdFullStateMsg
+            clear obj.time
         end
         
         function pos = position(obj)
@@ -75,7 +98,7 @@ classdef Crazyflie < handle
             % vel_msg = obj.VelSubscriber.LatestMessage;
             % vel = [vel_msg.Vector.X; vel_msg.Vector.Y; vel_msg.Vector.Z];
             dt = 0.1;
-            timePrev = rostime("now") - dt;
+            timePrev = obj.time.CurrentTime - dt;
             tfNow = getTransform(obj.tfTree, "/world", obj.prefix, "Timeout", 10);
             tfPrev = getTransform(obj.tfTree, "/world", obj.prefix, timePrev);
             
@@ -90,54 +113,48 @@ classdef Crazyflie < handle
 
         function cmdPosition(obj, pos, yaw)
             %CMDPOSITION Sends a streaming command of absolute position and yaw setpoint.
-            msg = rosmessage("crazyflie_driver/Position");
-            msg.Header.Stamp   = rostime("now");
-            msg.Header.FrameId = "/world";
-            msg.X              = pos(1);
-            msg.Y              = pos(2);
-            msg.Z              = pos(3);
-            msg.Yaw            = yaw;
+            obj.cmdPositionMsg.Header.Stamp   = obj.time.CurrentTime;
+            obj.cmdPositionMsg.X              = pos(1);
+            obj.cmdPositionMsg.Y              = pos(2);
+            obj.cmdPositionMsg.Z              = pos(3);
+            obj.cmdPositionMsg.Yaw            = yaw;
             
-            send(obj.cmdPositionPublisher, msg);
+            send(obj.cmdPositionPublisher, obj.cmdPositionMsg);
         end
         
         function cmdVelocityWorld(obj, vel, yawRate)
             %CMDVELOCITYWORLD Sends a streaming velocity-world controller setpoint command.
-            msg = rosmessage("crazyflie_driver/VelocityWorld");
-            msg.Header.Stamp   = rostime("now");
-            msg.Header.FrameId = "/world";
-            msg.Vel            = vel(1);
-            msg.Vel            = vel(2);
-            msg.Vel            = vel(3);
-            msg.YawRate        = yawRate;
+            obj.cmdVelocityWorldMsg.Header.Stamp   = obj.time.CurrentTime;
+            obj.cmdVelocityWorldMsg.Vel            = vel(1);
+            obj.cmdVelocityWorldMsg.Vel            = vel(F2);
+            obj.cmdVelocityWorldMsg.Vel            = vel(3);
+            obj.cmdVelocityWorldMsg.YawRate        = yawRate;
             
-            send(obj.cmdVelocityWorldPublisher, msg);
+            send(obj.cmdVelocityWorldPublisher, obj.cmdVelocityWorldMsg);
         end
         
         function cmdFullState(obj, pos, vel, acc, yaw, omega)
             %CMDFULLSTATE Sends a streaming full-state controller setpoint command.
             quat = eul2quat([0, 0, yaw], 'xyz');
-            msg = rosmessage('crazyflie_driver/FullState');
-            msg.Header.Stamp       = rostime("now");
-            msg.Header.FrameId     = "/world";
-            msg.Pose.Position.X    = pos(1);
-            msg.Pose.Position.Y    = pos(2);
-            msg.Pose.Position.Z    = pos(3);
-            msg.Twist.Linear.X     = vel(1);
-            msg.Twist.Linear.Y     = vel(2);
-            msg.Twist.Linear.Z     = vel(3);
-            msg.Acc.X              = acc(1);
-            msg.Acc.Y              = acc(2);
-            msg.Acc.Z              = acc(3);
-            msg.Pose.Orientation.W = quat(1);
-            msg.Pose.Orientation.X = quat(2);
-            msg.Pose.Orientation.Y = quat(3);
-            msg.Pose.Orientation.Z = quat(4);
-            msg.Twist.Angular.X    = omega(1);
-            msg.Twist.Angular.Y    = omega(2);
-            msg.Twist.Angular.Z    = omega(3);
+            obj.cmdFullStateMsg.Header.Stamp       = obj.time.CurrentTime;
+            obj.cmdFullStateMsg.Pose.Position.X    = pos(1);
+            obj.cmdFullStateMsg.Pose.Position.Y    = pos(2);
+            obj.cmdFullStateMsg.Pose.Position.Z    = pos(3);
+            obj.cmdFullStateMsg.Twist.Linear.X     = vel(1);
+            obj.cmdFullStateMsg.Twist.Linear.Y     = vel(2);
+            obj.cmdFullStateMsg.Twist.Linear.Z     = vel(3);
+            obj.cmdFullStateMsg.Acc.X              = acc(1);
+            obj.cmdFullStateMsg.Acc.Y              = acc(2);
+            obj.cmdFullStateMsg.Acc.Z              = acc(3);
+            obj.cmdFullStateMsg.Pose.Orientation.W = quat(1);
+            obj.cmdFullStateMsg.Pose.Orientation.X = quat(2);
+            obj.cmdFullStateMsg.Pose.Orientation.Y = quat(3);
+            obj.cmdFullStateMsg.Pose.Orientation.Z = quat(4);
+            obj.cmdFullStateMsg.Twist.Angular.X    = omega(1);
+            obj.cmdFullStateMsg.Twist.Angular.Y    = omega(2);
+            obj.cmdFullStateMsg.Twist.Angular.Z    = omega(3);
             
-            send(obj.cmdFullStatePublisher, msg);
+            send(obj.cmdFullStatePublisher, obj.cmdFullStateMsg);
         end
         
         function setGroupMask(obj, groupMask)
