@@ -246,6 +246,20 @@ classdef Crazyflie < handle
             call(obj.updateParamsService, request);
         end  
         
+        function setLEDColor(obj, r, g, b)
+            %SETLEDCOLOR Sets the color of the LED ring deck.
+
+            % PRECONDITION: The param "ring/effect" must be set to 7 (solid color)
+            % for this command to have any effect. The default mode uses the ring
+            % color to indicate radio connection quality.
+
+            % This is a blocking command, so it may cause stability problems for
+            % large swarms and/or high-frequency changes.
+            
+            obj.setParam("ring/solidRed", floor(r * 255))
+            obj.setParam("ring/solidGreen", floor(g * 255))
+            obj.setParam("ring/solidBlue", floor(b * 255))
+        end
     end
 end
 
