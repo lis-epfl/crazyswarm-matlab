@@ -21,7 +21,7 @@ classdef Crazyflie < handle
         landService
         goToService
         notifySetpointsStopService
-        % TODO: Implement updateParamsService
+        updateParamsService
         
         % Messages
         cmdPositionMsg
@@ -30,8 +30,7 @@ classdef Crazyflie < handle
     end
     
     properties(Constant, Hidden)
-        % Hack for faster access to ros time
-        time = ros.internal.Time;
+        time = ros.internal.Time;   % Hack for faster access to ros time
     end
     
     methods
@@ -65,6 +64,7 @@ classdef Crazyflie < handle
             obj.landService = rossvcclient(prefix + "/land");
             obj.goToService = rossvcclient(prefix + "/go_to");
             obj.notifySetpointsStopService = rossvcclient(prefix + "/notify_setpoints_stop");
+            obj.updateParamsService = rossvcclient(prefix + "/update_params");
         end
         
         function delete(obj)
@@ -228,6 +228,24 @@ classdef Crazyflie < handle
             
             call(obj.notifySetpointsStopService, request);
         end
+        
+        function setParam(obj, name, value)
+            %SETPARAM Changes the value of the given parameter.
+            rosparam('set', obj.prefix + "/" + name, value);
+            request = rosmessage(obj.updateParamsService);
+            request.Params = {convertStringsToChars(name)};
+            call(obj.updateParamsService, request);
+        end
+        
+        function setParams(obj, params)
+            %SETPARAMS Changes the value of several parameters at once.
+            % params: struct
+            rosparam('set', obj.prefix, params);  % Set entire struct at once
+            request = rosmessage(obj.updateParamsService);
+            request.Params = fieldnames(params);
+            call(obj.updateParamsService, request);
+        end  
+        
     end
 end
 

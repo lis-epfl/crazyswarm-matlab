@@ -10,6 +10,7 @@ classdef Crazyswarm < handle
         takeoffService
         landService
         goToService
+        updateParamsService
     end
     
     methods
@@ -18,6 +19,7 @@ classdef Crazyswarm < handle
             obj.takeoffService = rossvcclient("/takeoff");
             obj.landService = rossvcclient("/land");
             obj.goToService = rossvcclient("/go_to");
+            obj.updateParamsService = rossvcclient("/update_params");
             
             cfg = yaml.ReadYaml(convertStringsToChars(crazyflies_yaml));
             tfTree = rostf;
@@ -136,6 +138,15 @@ classdef Crazyswarm < handle
             
             call(obj.goToService, request);
         end
+        
+        function setParam(obj, name, value)
+            %SETPARAM Broadcasted setParam. See Crazyflie.setParam() for details
+            rosparam('set', "/allcfs/" + name, value);
+            request = rosmessage(obj.updateparamsService);
+            request.Params = {name};
+            call(obj.updateParamsService, request);
+        end
+
     end
 end
 
