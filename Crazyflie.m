@@ -31,15 +31,25 @@ classdef Crazyflie < handle
         cmdPositionMsg
         cmdVelocityWorldMsg
         cmdFullStateMsg
+        
+        time
     end
-    
-    properties(Constant, Hidden)
-        time = ros.internal.Time;   % Hack for faster access to ros time
-    end
-    
+     
     methods
         function obj = Crazyflie(id, initialPosition, tfTtree)
             %CRAZYFLIE Constructor for a Crazyflie
+            
+            % Hack because rostime() is too slow
+            % Use ros.internal.Time for versions >= R2019b
+            % Use robotics.ros.internal.Time([]) for versions < R2019b
+            try
+                time = ros.internal.Time;
+            catch ex
+                if contains(ex.message, "Unable to resolve the name")
+                    time = robotics.ros.internal.Time([]);
+                end
+            end
+            
             obj.id = id;
             prefix = "cf" + num2str(id);
             obj.prefix = prefix;
