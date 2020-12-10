@@ -14,6 +14,10 @@ classdef Crazyflie < handle
         cmdPositionPublisher
         cmdVelocityWorldPublisher
         cmdFullStatePublisher
+        
+        % Subscribers
+        posSubscriber
+        velSubscriber
          
         % Services
         setGroupMaskService
@@ -42,23 +46,26 @@ classdef Crazyflie < handle
             obj.initialPosition = initialPosition;
             obj.tfTree = tfTtree;
             
-            
             obj.cmdPositionPublisher = rospublisher(prefix + "/cmd_position", ...
                                                     "crazyflie_driver/Position");
-            obj.cmdPositionMsg = rosmessage("crazyflie_driver/FullState")
+            obj.cmdPositionMsg = rosmessage("crazyflie_driver/Position");
             obj.cmdPositionMsg.Header.FrameId     = "/world";
                    
             obj.cmdVelocityWorldPublisher = rospublisher(prefix + "/cmd_velocity_world", ...
                                                          "crazyflie_driver/VelocityWorld");
-            obj.cmdVelocityWorldMsg = rosmessage("crazyflie_driver/VelocityWorld")
+            obj.cmdVelocityWorldMsg = rosmessage("crazyflie_driver/VelocityWorld");
             obj.cmdVelocityWorldMsg.Header.FrameId     = "/world";
 
             obj.cmdFullStatePublisher = rospublisher(prefix + "/cmd_full_state", ...
                                                      "crazyflie_driver/FullState");
             obj.cmdFullStateMsg = rosmessage("crazyflie_driver/FullState");
             obj.cmdFullStateMsg.Header.FrameId     = "/world";
-                                               
-                                               
+            
+            % NOTE: Workaround code. See Crazyflie.position() and 
+            % Crazyflie.velocity() for more details.
+            obj.posSubscriber = rossubscriber(prefix + "/pos");
+            obj.velSubscriber = rossubscriber(prefix + "/vel");
+            
             obj.setGroupMaskService = rossvcclient(prefix + "/set_group_mask");
             obj.takeoffService = rossvcclient(prefix + "/takeoff");
             obj.landService = rossvcclient(prefix + "/land");
@@ -72,6 +79,8 @@ classdef Crazyflie < handle
             clear obj.cmdPositionPublisher
             clear obj.cmdVelocityWorldPublisher
             clear obj.cmdFullStatePublisher
+            clear obj.posSubscriber
+            clear obj.velSubscriber
             clear obj.setGroupMaskService
             clear obj.takeoffService
             clear obj.landService
@@ -85,30 +94,51 @@ classdef Crazyflie < handle
         
         function pos = position(obj)
             %POSITION Get position of crazyflie.
-            % Latest known transformation
-            tf = getTransform(obj.tfTree, "/world", obj.prefix, "Timeout", 10);
-            % t = tf.Header.Stamp.Sec + tf.Header.Stamp.Nsec / 1e9;
-            transl = tf.Transform.Translation;
-            pos = [transl.X; transl.Y; transl.Z];
+            %
+            % NOTE: The commented code below is the equivalent of the code
+            % in pycrazyswarm. Unfortunately, getTransform is currently too 
+            % slow to be usable in real time with many drones. For this
+            % reason we use an additional Python node to publish position
+            % and velocity of each crazyflie on topics called 'cf#/pos'
+            % and 'cf#/vel'.
+            
+%             % Latest known transformation
+%             tf = getTransform(obj.tfTree, "/world", obj.prefix, "Timeout", 10);
+%             % t = tf.Header.Stamp.Sec + tf.Header.Stamp.Nsec / 1e9;
+%             transl = tf.Transform.Translation;
+%             pos = [transl.X; transl.Y; transl.Z];
+            
+            % Workaround (requires python node that publishes position)
+            msg = obj.posSubscriber.LatestMessage;
+            pos = [msg.X, msg.Y, msg.Z];
         end
 
         function vel = velocity(obj)
             %VELOCITY Get velocity of crazyflie.
-            % Alternative code if velocity is calculated in in python
-            % vel_msg = obj.VelSubscriber.LatestMessage;
-            % vel = [vel_msg.Vector.X; vel_msg.Vector.Y; vel_msg.Vector.Z];
-            dt = 0.1;
-            timePrev = obj.time.CurrentTime - dt;
-            tfNow = getTransform(obj.tfTree, "/world", obj.prefix, "Timeout", 10);
-            tfPrev = getTransform(obj.tfTree, "/world", obj.prefix, timePrev);
+            %
+            % NOTE: The commented code below is the equivalent of the code
+            % in pycrazyswarm. Unfortunately, getTransform is currently too 
+            % slow to be usable in real time with many drones. For this
+            % reason we use an additional Python node to publish position
+            % and velocity of each crazyflie on topics called 'cf#/pos'
+            % and 'cf#/vel'.
             
-            translNow = tfNow.Transform.Translation;
-            translPrev = tfPrev.Transform.Translation;
+%             dt = 0.1;
+%             timePrev = obj.time.CurrentTime - dt;
+%             tfNow = getTransform(obj.tfTree, "/world", obj.prefix, "Timeout", 10);
+%             tfPrev = getTransform(obj.tfTree, "/world", obj.prefix, timePrev);
+%             
+%             translNow = tfNow.Transform.Translation;
+%             translPrev = tfPrev.Transform.Translation;
+%             
+%             posNow = [translNow.X; translNow.Y; translNow.Z];
+%             posPrev = [translPrev.X; translPrev.Y; translPrev.Z];
+%             
+%             vel = (posNow - posPrev) / dt;
             
-            posNow = [translNow.X; translNow.Y; translNow.Z];
-            posPrev = [translPrev.X; translPrev.Y; translPrev.Z];
-            
-            vel = (posNow - posPrev) / dt;
+            % Workaround (requires python node that publishes velocity)
+            msg = obj.velSubscriber.LatestMessage;
+            vel = [msg.X, msg.Y, msg.Z];
         end
 
         function cmdPosition(obj, pos, yaw)
