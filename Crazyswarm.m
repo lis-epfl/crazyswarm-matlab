@@ -11,6 +11,12 @@ classdef Crazyswarm < handle
         landService
         goToService
         updateParamsService
+        
+        % Service messages
+        takeoffServiceMsg
+        landServiceMsg
+        goToServiceMsg
+        updateParamServiceMsg
     end
     
     methods
@@ -21,6 +27,11 @@ classdef Crazyswarm < handle
             obj.goToService = rossvcclient("/go_to");
             obj.updateParamsService = rossvcclient("/update_params");
             
+            obj.takeoffServiceMsg = rosmessage(obj.takeoffService);
+            obj.landServiceMsg = rosmessage(obj.landService);
+            obj.goToServiceMsg = rosmessage(obj.goToService);
+            obj.updateParamServiceMsg = rosmessage(obj.updateParamsService);
+ 
             cfg = yaml.ReadYaml(convertStringsToChars(crazyflies_yaml));
             tfTree = rostf;
 
@@ -35,10 +46,21 @@ classdef Crazyswarm < handle
         
        function delete(obj)
             %DELETE Delete the swarm object and all contained crazyflies.
+            clear obj.takeoffService
+            clear obj.landService
+            clear obj.goToService
+            clear obj.updateParamsService
+            clear obj.takeoffServiceMsg
+            clear obj.landServiceMsg
+            clear obj.goToServiceMsg
+            clear obj.updateParamServiceMsg
+            
             for cf = obj.crazyflies
-                cf{1}.delete()
+                cf{1}.delete();
                 clear cf
             end
+            
+            clear obj.crazyflies
         end
         
         function state = state(obj)
@@ -98,12 +120,10 @@ classdef Crazyswarm < handle
                 groupMask = 0;
             end
             
-            request = rosmessage(obj.takeoffService);
-            request.Height    = targetHeight;
-            request.Duration  = rosduration(duration);
-            request.GroupMask = groupMask;
-            
-            call(obj.takeoffService, request);
+            obj.takeoffServiceMsg.Height    = targetHeight;
+            obj.takeoffServiceMsg.Duration  = rosduration(duration);
+            obj.takeoffServiceMsg.GroupMask = groupMask;
+            call(obj.takeoffService, obj.takeoffServiceMsg);
         end
         
         function land(obj, targetHeight, duration, groupMask)
@@ -112,12 +132,11 @@ classdef Crazyswarm < handle
                 groupMask = 0;
             end
             
-            request = rosmessage(obj.landService);
-            request.Height    = targetHeight;
-            request.Duration  = rosduration(duration);
-            request.GroupMask = groupMask;
+            obj.landServiceMsg.Height    = targetHeight;
+            obj.landServiceMsg.Duration  = rosduration(duration);
+            obj.landServiceMsg.GroupMask = groupMask;
             
-            call(obj.landService, request);
+            call(obj.landService, obj.landServiceMsg);
         end
         
         function goTo(obj, goal, yaw, duration, groupMask)
@@ -127,24 +146,22 @@ classdef Crazyswarm < handle
             if nargin < 5  || isempty(groupMask)
                 groupMask = 0;
             end
-            request = rosmessage(obj.goToService);
-            request.Goal.X    = goal(1);
-            request.Goal.Y    = goal(2);
-            request.Goal.Z    = goal(3);
-            request.Yaw       = yaw;  % In degrees
-            request.Duration  = rosduration(duration);
-            request.Relative  = true;
-            request.GroupMask = groupMask;
+            obj.goToServiceMsg.Goal.X    = goal(1);
+            obj.goToServiceMsg.Goal.Y    = goal(2);
+            obj.goToServiceMsg.Goal.Z    = goal(3);
+            obj.goToServiceMsg.Yaw       = yaw;  % In degrees
+            obj.goToServiceMsg.Duration  = rosduration(duration);
+            obj.goToServiceMsg.Relative  = true;
+            obj.goToServiceMsg.GroupMask = groupMask;
             
-            call(obj.goToService, request);
+            call(obj.goToService, obj.goToServiceMsg);
         end
         
         function setParam(obj, name, value)
             %SETPARAM Broadcasted setParam. See Crazyflie.setParam() for details
             rosparam('set', "/allcfs/" + name, value);
-            request = rosmessage(obj.updateparamsService);
-            request.Params = {name};
-            call(obj.updateParamsService, request);
+            obj.updateParamServiceMsg.Params = {name};
+            call(obj.updateParamsService, obj.updateParamServiceMsg);
         end
 
     end

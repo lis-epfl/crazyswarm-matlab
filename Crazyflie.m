@@ -32,6 +32,14 @@ classdef Crazyflie < handle
         cmdVelocityWorldMsg
         cmdFullStateMsg
         
+        % Service messages
+        setGroupMaskServiceMsg
+        takeoffServiceMsg
+        landServiceMsg
+        goToServiceMsg
+        notifySetpointsStopServiceMsg
+        updateParamsServiceMsg
+        
         time
     end
      
@@ -82,6 +90,13 @@ classdef Crazyflie < handle
             obj.goToService = rossvcclient(prefix + "/go_to");
             obj.notifySetpointsStopService = rossvcclient(prefix + "/notify_setpoints_stop");
             obj.updateParamsService = rossvcclient(prefix + "/update_params");
+            
+            obj.setGroupMaskServiceMsg = rosmessage(obj.setGroupMaskService);
+            obj.takeoffServiceMsg = rosmessage(obj.takeoffService);
+            obj.landServiceMsg = rosmessage(obj.landService);
+            obj.goToServiceMsg = rosmessage(obj.goToService);
+            obj.notifySetpointsStopServiceMsg = rosmessage(obj.notifySetpointsStopService);
+            obj.updateParamsServiceMsg = rosmessage(obj.updateParamsService);
         end
         
         function delete(obj)
@@ -99,6 +114,12 @@ classdef Crazyflie < handle
             clear obj.cmdPositionMsg
             clear obj.cmdVelocityWorldMsg
             clear obj.cmdFullStateMsg
+            clear obj.setGroupMaskServiceMsg
+            clear obj.takeoffServiceMsg
+            clear obj.landServiceMsg
+            clear obj.goToServiceMsg
+            clear obj.notifySetpointsStopServiceMsg
+            clear obj.updateParamsServiceMsg
             clear obj.time
         end
         
@@ -199,10 +220,9 @@ classdef Crazyflie < handle
         
         function setGroupMask(obj, groupMask)
             %SETGROUPMASK Sets the group mask bits for this robot.
-            request = rosmessage(obj.setGroupMaskService);
-            request.GroupMask = groupMask;
+            obj.setGroupMaskServiceMsg.GroupMask = groupMask;
             
-            call(obj.setGroupMaskService, request);
+            call(obj.setGroupMaskService, obj.setGroupMaskServiceMsg);
         end
 
         function takeoff(obj, targetHeight, duration, groupMask)
@@ -211,12 +231,11 @@ classdef Crazyflie < handle
                 groupMask = 0;
             end
             
-            request = rosmessage(obj.takeoffService);
-            request.Height    = targetHeight;
-            request.Duration  = rosduration(duration);
-            request.GroupMask = groupMask;
+            obj.takeoffServiceMsg.Height    = targetHeight;
+            obj.takeoffServiceMsg.Duration  = rosduration(duration);
+            obj.takeoffServiceMsg.GroupMask = groupMask;
             
-            call(obj.takeoffService, request);
+            call(obj.takeoffService, obj.takeoffServiceMsg);
         end
         
         function land(obj, targetHeight, duration, groupMask)
@@ -225,12 +244,11 @@ classdef Crazyflie < handle
                 groupMask = 0;
             end
             
-            request = rosmessage(obj.landService);
-            request.Height    = targetHeight;
-            request.Duration  = rosduration(duration);
-            request.GroupMask = groupMask;
+            obj.landServiceMsg.Height    = targetHeight;
+            obj.landServiceMsg.Duration  = rosduration(duration);
+            obj.landServiceMsg.GroupMask = groupMask;
             
-            call(obj.landService, request);
+            call(obj.landService, obj.landServiceMsg);
         end
         
         function goTo(obj, goal, yaw, duration, relative, groupMask)
@@ -241,16 +259,16 @@ classdef Crazyflie < handle
             if nargin < 6  || isempty(groupMask)
                 groupMask = 0;
             end
-            request = rosmessage(obj.goToService);
-            request.Goal.X    = goal(1);
-            request.Goal.Y    = goal(2);
-            request.Goal.Z    = goal(3);
-            request.Yaw       = yaw;  % In degrees
-            request.Duration  = rosduration(duration);
-            request.Relative  = relative;
-            request.GroupMask = groupMask;
             
-            call(obj.goToService, request);
+            obj.goToServiceMsg.Goal.X    = goal(1);
+            obj.goToServiceMsg.Goal.Y    = goal(2);
+            obj.goToServiceMsg.Goal.Z    = goal(3);
+            obj.goToServiceMsg.Yaw       = yaw;  % In degrees
+            obj.goToServiceMsg.Duration  = rosduration(duration);
+            obj.goToServiceMsg.Relative  = relative;
+            obj.goToServiceMsg.GroupMask = groupMask;
+            
+            call(obj.goToService, obj.goToServiceMsg);
         end
 
         function notifySetpointsStop(obj, remainValidMillisecs, groupMask)
@@ -262,28 +280,25 @@ classdef Crazyflie < handle
                 groupMask = 0;
             end
             
-            request = rosmessage(obj.notifySetpointsStopService);
-            request.RemainValidMillisecs = remainValidMillisecs;
-            request.GroupMask            = groupMask;
+            obj.notifySetpointsStopServiceMsg.RemainValidMillisecs = remainValidMillisecs;
+            obj.notifySetpointsStopServiceMsg.GroupMask            = groupMask;
             
-            call(obj.notifySetpointsStopService, request);
+            call(obj.notifySetpointsStopService, obj.notifySetpointsStopServiceMsg);
         end
         
         function setParam(obj, name, value)
             %SETPARAM Changes the value of the given parameter.
             rosparam('set', obj.prefix + "/" + name, value);
-            request = rosmessage(obj.updateParamsService);
-            request.Params = {convertStringsToChars(name)};
-            call(obj.updateParamsService, request);
+            obj.updateParamsServiceMsg.Params = {convertStringsToChars(name)};
+            call(obj.updateParamsService, obj.updateParamsServiceMsg);
         end
         
         function setParams(obj, params)
             %SETPARAMS Changes the value of several parameters at once.
             % params: struct
             rosparam('set', obj.prefix, params);  % Set entire struct at once
-            request = rosmessage(obj.updateParamsService);
-            request.Params = fieldnames(params);
-            call(obj.updateParamsService, request);
+            obj.updateParamsServiceMsg.Params = fieldnames(params);
+            call(obj.updateParamsService, obj.updateParamsServiceMsg);
         end  
         
         function setLEDColor(obj, r, g, b)
