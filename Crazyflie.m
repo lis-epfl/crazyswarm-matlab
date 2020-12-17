@@ -43,10 +43,10 @@ classdef Crazyflie < handle
             % Use ros.internal.Time for versions >= R2019b
             % Use robotics.ros.internal.Time([]) for versions < R2019b
             try
-                time = ros.internal.Time;
+                obj.time = ros.internal.Time;
             catch ex
                 if contains(ex.message, "Unable to resolve the name")
-                    time = robotics.ros.internal.Time([]);
+                    obj.time = robotics.ros.internal.Time([]);
                 end
             end
             
